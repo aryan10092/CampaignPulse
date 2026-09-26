@@ -1,23 +1,62 @@
 const { Worker } = require('bullmq');
+const { Resend } = require('resend');
 const { connection } = require('../config/redis');
 const db = require('../config/db');
 const { emitCampaignProgressThrottled, emitRecipientUpdate } = require('../services/socketService');
+const { getEmailConfig } = require('../services/settingsService');
 
 /**
- * Simulates email sending with configurable latency and simulated bounce/failure rate
+ * Dispatches an email using Resend (if configured) or simulation fallback
  */
-async function simulateSendEmail({ email, name, subject, body }) {
-  // Simulate network/SMTP latency between 100ms and 300ms
+async function sendCampaignEmail({ email, name, subject, body }) {
+  const config = await getEmailConfig();
+
+  // 1. If Resend is configured, send real email
+  if (config.resendApiKey && config.provider === 'resend') {
+    const resend = new Resend(config.resendApiKey);
+
+    const fromAddress = config.fromName
+      ? `${config.fromName} <${config.fromEmail}>`
+      : config.fromEmail;
+
+    const personalizedText = body.replace(/{name}/gi, name || 'Customer');
+    const personalizedHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1e293b; background: #ffffff; border-radius: 8px;">
+        <div style="font-size: 16px; line-height: 1.6;">
+          ${personalizedText.replace(/\n/g, '<br/>')}
+        </div>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0 16px 0;" />
+        <p style="font-size: 12px; color: #94a3b8; margin: 0;">
+          Sent via CampaignPulse Bulk Email Manager &bull; 
+          <a href="#" style="color: #6366f1; text-decoration: none;">Unsubscribe</a>
+        </p>
+      </div>
+    `;
+
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [email],
+      subject: subject,
+      text: personalizedText,
+      html: personalizedHtml,
+    });
+
+    if (error) {
+      throw new Error(`Resend Error: ${error.message || JSON.stringify(error)}`);
+    }
+
+    return { success: true, id: data?.id, mode: 'resend' };
+  }
+
+  // 2. Simulation mode fallback (if no Resend API key is set)
   const latency = Math.floor(Math.random() * 200) + 100;
   await new Promise((resolve) => setTimeout(resolve, latency));
 
-  // Simulate 3% random failure to test BullMQ retries & failure tracking
-  const isSimulatedFailure = Math.random() < 0.03;
-  if (isSimulatedFailure) {
-    throw new Error(`SMTP Error: 550 Mailbox unavailable or rejected recipient <${email}>`);
+  if (Math.random() < 0.03) {
+    throw new Error(`Simulated SMTP Error: 550 Mailbox unavailable <${email}>`);
   }
 
-  return { success: true, timestamp: new Date() };
+  return { success: true, mode: 'simulation' };
 }
 
 // Create worker with concurrency and rate limiting
@@ -28,7 +67,7 @@ const emailWorker = new Worker(
 
     try {
       // 1. Process email dispatch
-      await simulateSendEmail({ email, name, subject, body });
+      await sendCampaignEmail({ email, name, subject, body });
 
       // 2. Mark recipient as SENT in NeonDB
       await db.query(
@@ -67,9 +106,9 @@ const emailWorker = new Worker(
   },
   {
     connection,
-    concurrency: parseInt(process.env.WORKER_CONCURRENCY || '10', 10),
+    concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
     limiter: {
-      max: 50,
+      max: parseInt(process.env.WORKER_RATE_LIMIT || '5', 10), // Safe rate limit for Resend
       duration: 1000,
     },
   }

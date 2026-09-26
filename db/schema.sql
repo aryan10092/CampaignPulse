@@ -33,3 +33,11 @@ CREATE TABLE IF NOT EXISTS recipients (
 CREATE INDEX IF NOT EXISTS idx_recipients_campaign_id ON recipients(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_recipients_status ON recipients(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_created_at ON campaigns(created_at DESC);
+
+-- Table: app_settings
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+

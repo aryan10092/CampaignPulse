@@ -5,10 +5,11 @@ import { Header } from '../components/Header';
 import { CreateCampaignForm } from '../components/CreateCampaignForm';
 import { CampaignDashboard } from '../components/CampaignDashboard';
 import { CampaignsList } from '../components/CampaignsList';
+import { SettingsView } from '../components/SettingsView';
 import { getSocket } from '../lib/socket';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'create' | 'dashboard' | 'history'>('create');
+  const [activeTab, setActiveTab] = useState<'create' | 'dashboard' | 'history' | 'settings'>('create');
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -67,6 +68,10 @@ export default function Home() {
             onSelectCampaign={handleSelectCampaign}
             onNewCampaign={() => setActiveTab('create')}
           />
+        )}
+
+        {activeTab === 'settings' && (
+          <SettingsView />
         )}
       </main>
 
