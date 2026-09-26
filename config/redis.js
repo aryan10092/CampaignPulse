@@ -1,6 +1,10 @@
+require('dotenv').config();
+
 const connection = {
-  host: '127.0.0.1',
-  port: 6379,
+  host: process.env.REDIS_HOST || '127.0.0.1',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+  maxRetriesPerRequest: null,
 };
 
 module.exports = { connection };

@@ -1,77 +1,69 @@
-# 📬 Background Jobs with Node.js, BullMQ, and Redis
+# Bulk Email Campaign Manager
 
-A simple example of how to run background jobs in a Node.js + Express app using [BullMQ](https://docs.bullmq.io/) and Redis. This project demonstrates how to offload tasks like sending emails into background workers to improve performance and scalability.
+A high-throughput, distributed email campaign processing system designed to handle large-scale email blasts reliably without blocking the main server thread.
 
----
+## 🚀 Tech Stack
 
-## 🚀 Features
+- **Backend**: Node.js, Express, Socket.IO
+- **Queue & Worker**: BullMQ, Redis
+- **Database**: Serverless PostgreSQL (NeonDB)
+- **Frontend**: Next.js, Tailwind CSS
 
-- Queue background jobs using BullMQ
-- Redis-backed job management
-- Dedicated worker to process jobs
-- Retry, delay, and event monitoring support
-- Minimal Express API
-
----
-
-## 🧱 Tech Stack
-
-- Node.js + Express
-- [BullMQ](https://docs.bullmq.io/)
-- Redis
-- JavaScript (CommonJS)
-
----
-
-## 📁 Folder Structure
-
-background-jobs-demo/
-├── config/ # Redis connection settings
-│ └── redis.js
-├── queue/ # Job queue definition
-│ └── emailQueue.js
-├── workers/ # Worker to process jobs
-│ └── emailWorker.js
-├── server.js # Express API to add jobs
-├── package.json
-
----
-
-## ⚙️ Setup Instructions
-
-### 1. Clone the repo
-
-```bash
-git clone git@github.com:umeshsujakhu/background-jobs-demo.git
-cd background-jobs-demo
-```
-
----
-
-## Install dependencies
+## 🏗️ Architecture
 
 ```
-npm install
+User uploads CSV (e.g. 1,000 customers)
+       ↓
+Stream Parsing (csv-parser)
+       ↓
+Batch Insert to NeonDB (UNNEST) & addBulk to BullMQ
+       ↓
+Redis Pipeline
+       ↓
+BullMQ Worker (Concurrency: 10, Rate-limited: 50/sec)
+       ↓
+Simulate Send / SMTP Provider
+       ↓
+Atomic DB Counter Updates & Throttled Socket.IO Broadcasts
+       ↓
+Live Real-time Next.js Dashboard
 ```
 
-## Start Redis
+## ⚙️ Environment Variables (.env)
 
-```
-redis-server
-```
-
-## Start the server
-
-```
-node server.js
+```env
+DATABASE_URL=postgresql://[user]:[password]@[neon_hostname]/neondb?sslmode=require
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+PORT=3000
+WORKER_CONCURRENCY=10
 ```
 
-### 🔥 Usage
+## 🛠️ Quick Start
 
-Send a POST request to queue an email:
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-```javascript
-curl -X POST http://localhost:3000/send-email \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "subject": "Hello!", "body": "Welcome to our app!"}'
-```
+2. **Initialize Database Schema on NeonDB**:
+   ```bash
+   npm run db:init
+   ```
+
+3. **Generate Sample CSV (1,000 customers)**:
+   ```bash
+   npm run generate:csv
+   ```
+
+4. **Start the Backend Server**:
+   ```bash
+   npm start
+   ```
+
+## 📡 API Endpoints
+
+- `POST /api/campaigns/upload`: Upload CSV and launch campaign
+- `GET /api/campaigns/:id`: Get campaign progress & live stats
+- `GET /api/campaigns`: List all campaigns
+- `GET /health`: Health check
