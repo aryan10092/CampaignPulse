@@ -14,7 +14,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Bulk Email Campaign Manager | BullMQ & Redis',
+  title: 'Bulk Email Campaign Manager',
   description: 'Distributed email campaign management with real-time WebSocket progress tracking, NeonDB, and BullMQ.',
 };
 

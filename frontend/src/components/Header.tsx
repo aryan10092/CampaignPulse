@@ -17,91 +17,88 @@ export const Header: React.FC<HeaderProps> = ({
   hasActiveCampaign,
 }) => {
   return (
-    <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="border-b border-zinc-900 bg-black/90 backdrop-blur-md sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Brand */}
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('create')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Mail className="w-5 h-5 text-white" />
+        <div 
+          className="flex items-center gap-2.5 cursor-pointer group"
+          onClick={() => setActiveTab('create')}
+        >
+          <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100 group-hover:border-zinc-700 transition">
+            <Mail className="w-3.5 h-3.5" />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-white tracking-tight">
               CampaignPulse
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Bulk Email Manager &bull; BullMQ + Redis + NeonDB
-            </p>
+            </span>
+            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+              v1.0
+            </span>
           </div>
         </div>
 
         {/* Navigation & Socket Status */}
-        <div className="flex items-center gap-4">
-          <nav className="flex items-center bg-slate-800/80 p-1 rounded-lg border border-slate-700/60 text-sm">
+        <div className="flex items-center gap-3">
+          <nav className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-900 text-xs">
             <button
               onClick={() => setActiveTab('create')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition ${
                 activeTab === 'create'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-zinc-900 text-white border border-zinc-800 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              New Campaign
+              <PlusCircle className="w-3.5 h-3.5" />
+              New
             </button>
 
             {hasActiveCampaign && (
               <button
                 onClick={() => setActiveTab('dashboard')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition ${
                   activeTab === 'dashboard'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-zinc-900 text-white border border-zinc-800 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200'
                 }`}
               >
-                <Radio className="w-4 h-4 animate-pulse text-emerald-400" />
+                <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                 Live Monitor
               </button>
             )}
 
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition ${
                 activeTab === 'history'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-zinc-900 text-white border border-zinc-800 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <ListOrdered className="w-4 h-4" />
+              <ListOrdered className="w-3.5 h-3.5" />
               Campaigns
             </button>
 
             <button
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition ${
                 activeTab === 'settings'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-zinc-900 text-white border border-zinc-800 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-3.5 h-3.5" />
               Settings
             </button>
           </nav>
 
-          {/* Connection status indicator */}
-          <div
-            className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-medium border ${
-              isConnected
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-            }`}
-          >
+          {/* Connection status */}
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-md text-[11px] font-mono border border-zinc-900 bg-zinc-950 text-zinc-400">
             <span
-              className={`w-2 h-2 rounded-full ${
-                isConnected ? 'bg-emerald-400 animate-ping' : 'bg-rose-500'
+              className={`w-1.5 h-1.5 rounded-full ${
+                isConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500'
               }`}
             />
-            {isConnected ? 'Socket Live' : 'Connecting...'}
+            <span>{isConnected ? 'connected' : 'offline'}</span>
           </div>
         </div>
       </div>

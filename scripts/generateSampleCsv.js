@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const count = parseInt(process.argv[2] || '1000', 10);
+const count = parseInt(process.argv[2] || '25', 10);
 const outputPath = path.join(__dirname, '..', 'sample-customers.csv');
 
 const firstNames = ['Aarav', 'Aryan', 'Ananya', 'Rohan', 'Priya', 'Aditya', 'Sneha', 'Vikram', 'Neha', 'Rahul', 'Pooja', 'Amit', 'Divya', 'Siddharth', 'Tanvi'];

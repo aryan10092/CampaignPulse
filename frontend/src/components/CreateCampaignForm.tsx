@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { UploadCloud, Send, Sparkles, Check } from 'lucide-react';
+import { UploadCloud, Send, Sparkles, FileText } from 'lucide-react';
+import { API_URL } from '../lib/config';
 
 interface CreateCampaignFormProps {
   onCampaignCreated: (campaignId: string) => void;
@@ -11,9 +12,9 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
   onCampaignCreated,
 }) => {
   const [title, setTitle] = useState('Diwali Special Offer 2026');
-  const [subject, setSubject] = useState('✨ Exclusive 50% Diwali Discount For You!');
+  const [subject, setSubject] = useState('Exclusive Diwali Festive Offer for You');
   const [body, setBody] = useState(
-    'Hi {name},\n\nWishing you and your loved ones a very Happy Diwali! Enjoy 50% off on all our premium products with code DIWALI50.\n\nWarm regards,\nThe Marketing Team'
+    'Hi {name},\n\nWishing you and your family a joyous Diwali! Use code DIWALI50 to claim 50% off on your next purchase.\n\nBest regards,\nTeam'
   );
   const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,18 +54,20 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
     }
   };
 
-  // Helper to quickly load the generated 1,000 customers sample CSV
   const handleLoadSampleData = async () => {
     try {
+      const firstNames = ['Aarav', 'Ananya', 'Rohan', 'Priya', 'Aditya', 'Sneha', 'Vikram', 'Neha', 'Rahul', 'Pooja', 'Amit', 'Divya', 'Siddharth', 'Tanvi'];
+      const lastNames = ['Sharma', 'Patel', 'Verma', 'Gupta', 'Singh', 'Kumar', 'Joshi', 'Mehta', 'Nair', 'Reddy', 'Chopra', 'Rao', 'Iyer', 'Das'];
+      const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'example.com', 'company.org'];
+
       let csvContent = 'name,email\n';
-      const names = [
-        'Aarav Sharma', 'Priya Patel', 'Rohan Verma', 'Sneha Gupta',
-        'Aditya Singh', 'Ananya Kumar', 'Vikram Joshi', 'Neha Mehta'
-      ];
-      for (let i = 1; i <= 1000; i++) {
-        const name = names[i % names.length];
-        const email = `customer${i}@example.com`;
-        csvContent += `"${name}","${email}"\n`;
+      for (let i = 1; i <= 25; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const domain = domains[Math.floor(Math.random() * domains.length)];
+        const fullName = `${firstName} ${lastName}`;
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@${domain}`;
+        csvContent += `"${fullName}","${email}"\n`;
       }
 
       const sampleFile = new File([csvContent], 'customers.csv', { type: 'text/csv' });
@@ -92,7 +95,6 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
       formData.append('body', body);
       formData.append('file', file);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const res = await fetch(`${API_URL}/api/campaigns/upload`, {
         method: 'POST',
         body: formData,
@@ -103,7 +105,6 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
         throw new Error(data.error || 'Failed to upload campaign');
       }
 
-      // Switch to dashboard view
       onCampaignCreated(data.campaignId);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong while launching the campaign.';
@@ -114,38 +115,38 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-10 px-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-slate-950/50">
-        <div className="flex items-center justify-between mb-6">
+    <div className="max-w-2xl mx-auto py-10 px-4">
+      <div className="border border-zinc-800 bg-zinc-950 rounded-xl p-6 sm:p-7 shadow-2xl">
+        <div className="flex items-center justify-between mb-6 pb-5 border-b border-zinc-900">
           <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Create New Email Campaign
+            <h2 className="text-lg font-semibold text-white tracking-tight">
+              Create Campaign
             </h2>
-            <p className="text-sm text-slate-400 mt-1">
-              Upload customer list and dispatch jobs asynchronously via BullMQ & Redis.
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Upload customer CSV and dispatch background jobs via BullMQ & Redis.
             </p>
           </div>
           <button
             type="button"
             onClick={handleLoadSampleData}
-            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/20 transition"
+            className="flex items-center gap-1.5 text-xs font-mono px-2.5 py-1.5 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-800 hover:border-zinc-700 hover:text-white transition"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            Quick 1,000 Sample CSV
+            <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
+             Sample CSV
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+          <div className="mb-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Campaign Title */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Campaign Name
+            <label className="block text-xs font-mono text-zinc-400 mb-1.5">
+              CAMPAIGN_NAME
             </label>
             <input
               type="text"
@@ -153,14 +154,14 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Diwali Offer 2026"
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
+              className="w-full px-3.5 py-2 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-sm transition"
             />
           </div>
 
           {/* Subject Line */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Email Subject
+            <label className="block text-xs font-mono text-zinc-400 mb-1.5">
+              EMAIL_SUBJECT
             </label>
             <input
               type="text"
@@ -168,22 +169,22 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g. Exclusive Diwali discounts for you"
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition"
+              className="w-full px-3.5 py-2 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-sm transition"
             />
           </div>
 
           {/* Email Body */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-300">
-                Email Content Template
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-mono text-zinc-400">
+                BODY_TEMPLATE
               </label>
               <button
                 type="button"
                 onClick={() => setBody((prev) => prev + ' {name}')}
-                className="text-xs text-indigo-400 hover:text-indigo-300"
+                className="text-[11px] font-mono text-zinc-400 hover:text-white transition"
               >
-                + Insert {'{name}'} tag
+                + insert {'{name}'}
               </button>
             </div>
             <textarea
@@ -192,14 +193,14 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your email body here..."
-              className="w-full px-4 py-3 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm transition font-mono"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-xs font-mono transition leading-relaxed"
             />
           </div>
 
           {/* CSV File Upload Dropzone */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Recipients List (CSV)
+            <label className="block text-xs font-mono text-zinc-400 mb-1.5">
+              CUSTOMERS_CSV
             </label>
             <div
               onDragEnter={handleDrag}
@@ -207,12 +208,12 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition ${
+              className={`relative border border-dashed rounded-lg p-5 text-center cursor-pointer transition ${
                 dragActive
-                  ? 'border-indigo-500 bg-indigo-500/10'
+                  ? 'border-white bg-zinc-900/60'
                   : file
-                  ? 'border-emerald-500/50 bg-emerald-500/5'
-                  : 'border-slate-700 hover:border-slate-600 bg-slate-800/30'
+                  ? 'border-zinc-700 bg-zinc-900/30'
+                  : 'border-zinc-800 hover:border-zinc-700 bg-black/60'
               }`}
             >
               <input
@@ -224,25 +225,25 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               />
 
               {file ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                    <Check className="w-6 h-6" />
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-8 h-8 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
+                    <FileText className="w-4 h-4" />
                   </div>
-                  <div className="text-white font-medium text-sm">{file.name}</div>
-                  <div className="text-xs text-slate-400">
-                    {(file.size / 1024).toFixed(1)} KB &bull; Click or drop to replace
+                  <div className="text-left">
+                    <div className="text-white font-medium text-xs font-mono">{file.name}</div>
+                    <div className="text-[11px] text-zinc-500">
+                      {(file.size / 1024).toFixed(1)} KB &bull; click to change
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center">
-                    <UploadCloud className="w-6 h-6" />
+                <div className="flex flex-col items-center gap-1.5 py-1">
+                  <UploadCloud className="w-5 h-5 text-zinc-500" />
+                  <div className="text-xs text-zinc-300 font-medium">
+                    Drag and drop <span className="font-mono text-white">.csv</span> or browse
                   </div>
-                  <div className="text-sm font-medium text-slate-200">
-                    Click to browse or drag and drop your CSV
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    Must have an <code className="text-slate-400">email</code> and optional <code className="text-slate-400">name</code> column
+                  <div className="text-[11px] text-zinc-500 font-mono">
+                    Must include email column (name optional)
                   </div>
                 </div>
               )}
@@ -250,27 +251,29 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
           </div>
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting || !file}
-            className={`w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold text-white shadow-lg transition ${
-              isSubmitting || !file
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-indigo-500/25'
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                Streaming CSV & Enqueuing Jobs...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Launch Campaign Blast
-              </>
-            )}
-          </button>
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting || !file}
+              className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-xs tracking-wide transition ${
+                isSubmitting || !file
+                  ? 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
+                  : 'bg-white text-black hover:bg-zinc-200 shadow-sm'
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-zinc-600 border-t-black rounded-full animate-spin" />
+                  <span>STREAMING_CSV_AND_ENQUEUING...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>LAUNCH_CAMPAIGN_BLAST</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

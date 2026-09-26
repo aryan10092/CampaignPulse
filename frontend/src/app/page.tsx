@@ -43,7 +43,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-black text-zinc-100 flex flex-col font-sans selection:bg-white selection:text-black">
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -75,8 +75,8 @@ export default function Home() {
         )}
       </main>
 
-      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        Bulk Email Campaign Manager &bull; Powered by Node.js, Express, BullMQ, Redis, Neon PostgreSQL & Socket.IO
+      <footer className="border-t border-zinc-900 py-5 text-center text-[11px] font-mono text-zinc-600">
+        CampaignPulse &bull; Made By Aryan Gupta
       </footer>
     </div>
   );
