@@ -7,8 +7,6 @@
     "start": "node server.js",
     "db:init": "node db/init.js",
     "generate:csv": "node scripts/generateSampleCsv.js",
-    "frontend:dev": "npm --prefix frontend run dev",
-    "frontend:build": "npm --prefix frontend run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
