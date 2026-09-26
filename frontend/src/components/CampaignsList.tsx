@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Mail, Eye, Loader2, Sparkles } from 'lucide-react';
 import { Campaign } from '../types';
-import { API_URL } from '../lib/config';
+import { apiFetch } from '../lib/api';
 
 interface CampaignsListProps {
   onSelectCampaign: (campaignId: string) => void;
@@ -19,7 +19,7 @@ export const CampaignsList: React.FC<CampaignsListProps> = ({
 
   const fetchCampaigns = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/campaigns`);
+      const res = await apiFetch('/api/campaigns');
       if (res.ok) {
         const data = await res.json();
         setCampaigns(data.campaigns || []);

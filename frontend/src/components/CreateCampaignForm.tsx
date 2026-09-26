@@ -95,8 +95,10 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
       formData.append('body', body);
       formData.append('file', file);
 
+      const token = typeof window !== 'undefined' ? localStorage.getItem('cp_token') : null;
       const res = await fetch(`${API_URL}/api/campaigns/upload`, {
         method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
 

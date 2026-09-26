@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Mail, Radio, PlusCircle, ListOrdered, Settings } from 'lucide-react';
+import { Mail, Radio, PlusCircle, ListOrdered, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   activeTab: 'create' | 'dashboard' | 'history' | 'settings';
@@ -16,11 +17,13 @@ export const Header: React.FC<HeaderProps> = ({
   isConnected,
   hasActiveCampaign,
 }) => {
+  const { user, logout } = useAuth();
+
   return (
     <header className="border-b border-zinc-900 bg-black/90 backdrop-blur-md sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Brand */}
-        <div 
+        <div
           className="flex items-center gap-2.5 cursor-pointer group"
           onClick={() => setActiveTab('create')}
         >
@@ -32,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
               CampaignPulse
             </span>
             <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
-              v1.0
+              v2.0
             </span>
           </div>
         </div>
@@ -100,6 +103,22 @@ export const Header: React.FC<HeaderProps> = ({
             />
             <span>{isConnected ? 'connected' : 'offline'}</span>
           </div>
+
+          {/* User info + logout */}
+          {user && (
+            <div className="flex items-center gap-2 pl-2 border-l border-zinc-800">
+              <span className="text-[11px] font-mono text-zinc-500 hidden sm:block max-w-[120px] truncate">
+                {user.email}
+              </span>
+              <button
+                onClick={logout}
+                title="Sign out"
+                className="p-1.5 rounded-md text-zinc-500 hover:text-rose-400 hover:bg-zinc-900 transition"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

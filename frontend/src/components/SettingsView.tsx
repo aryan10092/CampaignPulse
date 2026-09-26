@@ -15,7 +15,7 @@ import {
   Save,
   ExternalLink
 } from 'lucide-react';
-import { API_URL } from '../lib/config';
+import { apiFetch } from '../lib/api';
 
 interface SettingsData {
   provider: 'nodemailer' | 'resend' | 'simulation';
@@ -54,7 +54,7 @@ export const SettingsView: React.FC = () => {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/settings`);
+      const res = await apiFetch('/api/settings');
       if (res.ok) {
         const data: SettingsData = await res.json();
         setProvider(data.provider || 'nodemailer');
@@ -82,9 +82,8 @@ export const SettingsView: React.FC = () => {
     setSaveMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/settings`, {
+      const res = await apiFetch('/api/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider,
           smtpUser,
@@ -120,9 +119,8 @@ export const SettingsView: React.FC = () => {
     setTestMessage(null);
 
     try {
-      const res = await fetch(`${API_URL}/api/settings/test`, {
+      const res = await apiFetch('/api/settings/test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testEmail }),
       });
 

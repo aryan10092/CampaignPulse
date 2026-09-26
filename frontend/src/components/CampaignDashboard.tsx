@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Campaign, Recipient, CampaignProgressEvent, RecipientUpdateEvent } from '../types';
 import { getSocket } from '../lib/socket';
-import { API_URL } from '../lib/config';
+import { apiFetch } from '../lib/api';
 
 interface CampaignDashboardProps {
   campaignId: string;
@@ -30,7 +30,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
 
   const fetchCampaignData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/campaigns/${campaignId}`);
+      const res = await apiFetch(`/api/campaigns/${campaignId}`);
       if (!res.ok) throw new Error('Failed to load campaign');
       const data = await res.json();
       setCampaign(data.campaign);
