@@ -1,10 +1,16 @@
-const { Worker } = require('bullmq');
+const { Worker, DelayedError } = require('bullmq');
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 const { connection } = require('../config/redis');
 const db = require('../config/db');
 const { emitCampaignProgressThrottled, emitRecipientUpdate } = require('../services/socketService');
 const { getEmailConfig } = require('../services/settingsService');
+const { tryConsumeUserSlot } = require('../services/rateLimitService');
+const {
+  wasAlreadySent,
+  markSentIdempotent,
+  markRecipientSentOnce,
+} = require('../services/idempotencyService');
 
 // Per-user Nodemailer transporter pool cache
 // Key: `userId:smtpUser:smtpPass` → transporter instance
@@ -99,47 +105,70 @@ async function sendCampaignEmail({ email, name, subject, body, userId }) {
   throw new Error('Email delivery is not configured. Save Gmail SMTP or a Resend API key in Settings.');
 }
 
-// Create worker with concurrency and rate limiting
+async function completeSuccessfulSend({ campaignId, recipientId, email, name, jobId }) {
+  const firstMark = await markRecipientSentOnce(recipientId, jobId);
+  if (!firstMark) {
+    return { success: true, skipped: true };
+  }
+
+  await db.query(
+    `UPDATE campaigns
+     SET sent_count = sent_count + 1,
+         processing_count = GREATEST(0, processing_count - 1),
+         status = CASE WHEN (sent_count + 1 + failed_count) >= total_count THEN 'COMPLETED' ELSE status END,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [campaignId]
+  );
+
+  emitRecipientUpdate(campaignId, {
+    recipientId,
+    email,
+    name,
+    status: 'SENT',
+    sentAt: new Date().toISOString(),
+  });
+  emitCampaignProgressThrottled(campaignId);
+
+  return { success: true };
+}
+
 const emailWorker = new Worker(
   'emailQueue',
-  async (job) => {
+  async (job, token) => {
     const { campaignId, recipientId, email, name, subject, body, userId } = job.data;
 
     try {
-      // 1. Process email dispatch (per-user config)
+      if (await wasAlreadySent(recipientId)) {
+        return completeSuccessfulSend({
+          campaignId,
+          recipientId,
+          email,
+          name,
+          jobId: job.id,
+        });
+      }
+
+      const slot = await tryConsumeUserSlot(userId);
+      if (!slot.allowed) {
+        await job.moveToDelayed(Date.now() + slot.retryAfterMs, token);
+        throw new DelayedError();
+      }
+
       await sendCampaignEmail({ email, name, subject, body, userId });
+      await markSentIdempotent(recipientId);
 
-      // 2. Mark recipient as SENT in NeonDB
-      await db.query(
-        `UPDATE recipients
-         SET status = 'SENT', sent_at = CURRENT_TIMESTAMP, job_id = $1
-         WHERE id = $2`,
-        [job.id, recipientId]
-      );
-
-      // 3. Atomically increment campaign sent count and check completion
-      await db.query(
-        `UPDATE campaigns
-         SET sent_count = sent_count + 1,
-             processing_count = GREATEST(0, processing_count - 1),
-             status = CASE WHEN (sent_count + 1 + failed_count) >= total_count THEN 'COMPLETED' ELSE status END,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1`,
-        [campaignId]
-      );
-
-      // 4. Push real-time event via WebSockets
-      emitRecipientUpdate(campaignId, {
+      return completeSuccessfulSend({
+        campaignId,
         recipientId,
         email,
         name,
-        status: 'SENT',
-        sentAt: new Date().toISOString(),
+        jobId: job.id,
       });
-      emitCampaignProgressThrottled(campaignId);
-
-      return { success: true };
     } catch (error) {
+      if (error instanceof DelayedError) {
+        throw error;
+      }
       console.error(`⚠️ Attempt ${job.attemptsMade + 1} failed for ${email}:`, error.message);
       throw error;
     }
@@ -147,10 +176,6 @@ const emailWorker = new Worker(
   {
     connection,
     concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
-    limiter: {
-      max: parseInt(process.env.WORKER_RATE_LIMIT || '5', 10),
-      duration: 1000,
-    },
   }
 );
 

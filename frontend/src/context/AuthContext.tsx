@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../lib/config';
+import { disconnectSocket } from '../lib/socket';
 
 interface User {
   id: string;
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('cp_token');
     localStorage.removeItem('cp_user');
+    disconnectSocket();
   }, []);
 
   return (

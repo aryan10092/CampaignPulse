@@ -3,5 +3,8 @@ node_modules/
 .idea/
 .DS_Store
 .env
+backend/.env
 .vscode/
-npm-debug.log*     
+npm-debug.log*
+backend/uploads/
+ 

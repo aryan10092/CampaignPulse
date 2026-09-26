@@ -48,7 +48,11 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
     fetchCampaignData();
 
     const socket = getSocket();
-    socket.emit('join:campaign', campaignId);
+    const joinRoom = () => socket.emit('join:campaign', campaignId);
+    socket.on('connect', joinRoom);
+    if (socket.connected) {
+      joinRoom();
+    }
 
     socket.on('campaign:progress', (event: CampaignProgressEvent) => {
       if (event.campaignId === campaignId) {
@@ -85,6 +89,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
 
     return () => {
       socket.emit('leave:campaign', campaignId);
+      socket.off('connect', joinRoom);
       socket.off('campaign:progress');
       socket.off('recipient:updated');
     };
@@ -182,7 +187,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
             <span>
               {campaign.sent_count + campaign.failed_count} / {campaign.total_count} processed
             </span>
-            <span>Workers: 5 &bull; Rate limit: 5/sec</span>
+            <span>Workers: 5 &bull; Rate limit: 5/sec per account</span>
           </div>
         </div>
       </div>

@@ -1,9 +1,21 @@
 let io = null;
 const db = require('../config/db');
+const { verifyToken } = require('../middleware/auth');
 
-// Throttle progress emissions per campaign to avoid overwhelming the frontend UI
 const throttleMap = new Map();
 const THROTTLE_INTERVAL_MS = 250;
+
+function extractHandshakeToken(socket) {
+  const authToken = socket.handshake.auth?.token;
+  if (authToken) return authToken;
+
+  const header = socket.handshake.headers?.authorization;
+  if (header && header.startsWith('Bearer ')) return header.slice(7);
+
+  const queryToken = socket.handshake.query?.token;
+  if (Array.isArray(queryToken)) return queryToken[0];
+  return queryToken;
+}
 
 function initSocket(server) {
   const { Server } = require('socket.io');
@@ -14,12 +26,39 @@ function initSocket(server) {
     },
   });
 
+  io.use((socket, next) => {
+    try {
+      socket.user = verifyToken(extractHandshakeToken(socket));
+      if (!socket.user?.id) {
+        return next(new Error('Authentication required'));
+      }
+      next();
+    } catch {
+      next(new Error('Authentication required'));
+    }
+  });
+
   io.on('connection', (socket) => {
-    socket.on('join:campaign', (campaignId) => {
-      socket.join(`campaign:${campaignId}`);
+    socket.on('join:campaign', async (campaignId) => {
+      if (!campaignId) return;
+      try {
+        const res = await db.query(
+          'SELECT id FROM campaigns WHERE id = $1 AND user_id = $2',
+          [campaignId, socket.user.id]
+        );
+        if (res.rows.length === 0) {
+          socket.emit('join:error', { campaignId, error: 'Not allowed to join this campaign.' });
+          return;
+        }
+        socket.join(`campaign:${campaignId}`);
+      } catch (err) {
+        console.error('join:campaign failed:', err);
+        socket.emit('join:error', { campaignId, error: 'Failed to join campaign room.' });
+      }
     });
 
     socket.on('leave:campaign', (campaignId) => {
+      if (!campaignId) return;
       socket.leave(`campaign:${campaignId}`);
     });
   });

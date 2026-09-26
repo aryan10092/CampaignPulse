@@ -82,7 +82,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
     try {
       const firstNames = ['Aarav', 'Ananya', 'Rohan', 'Priya', 'Aditya', 'Sneha', 'Vikram', 'Neha', 'Rahul', 'Pooja', 'Amit', 'Divya', 'Siddharth', 'Tanvi'];
       const lastNames = ['Sharma', 'Patel', 'Verma', 'Gupta', 'Singh', 'Kumar', 'Joshi', 'Mehta', 'Nair', 'Reddy', 'Chopra', 'Rao', 'Iyer', 'Das'];
-      const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'example.com', 'company.org'];
+      const domains = [ 'example.com', 'example.org', 'example.net', 'test.com', 'demo.org' ];
 
       let csvContent = 'name,email\n';
       for (let i = 1; i <= 25; i++) {

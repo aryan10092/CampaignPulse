@@ -12,14 +12,18 @@ import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'create' | 'dashboard' | 'history' | 'settings'>('create');
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    const socket = getSocket();
+    if (!user || !token) {
+      setIsConnected(false);
+      return;
+    }
+
+    const socket = getSocket(token);
 
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
@@ -35,7 +39,7 @@ export default function Home() {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
     };
-  }, [user]);
+  }, [user, token]);
 
   const handleCampaignCreated = (campaignId: string) => {
     setActiveCampaignId(campaignId);

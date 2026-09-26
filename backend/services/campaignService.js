@@ -40,7 +40,10 @@ async function createAndEnqueueCampaign({ title, subject, body, filePath, userId
         name: row.name,
         subject: campaign.subject,
         body: campaign.body,
-        userId: userId || null,   // <-- pass userId to worker
+        userId: userId || null,
+      },
+      opts: {
+        jobId: `email-${row.id}`,
       },
     }));
 
