@@ -1,7 +1,7 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
-const { getPublicSettings, updateSettings, getEmailConfig } = require('../services/settingsService');
+const { getPublicSettings, updateSettings, getEmailConfig, isDeliveryConfigured } = require('../services/settingsService');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -35,7 +35,8 @@ router.post('/', async (req, res) => {
     res.json({ message: 'Settings saved successfully', settings: updated });
   } catch (error) {
     console.error('Error saving settings:', error);
-    res.status(500).json({ error: 'Failed to save settings' });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message || 'Failed to save settings' });
   }
 });
 
@@ -50,6 +51,11 @@ router.post('/test', async (req, res) => {
     }
 
     const config = await getEmailConfig(req.user.id);
+    if (!isDeliveryConfigured(config)) {
+      return res.status(400).json({
+        error: 'Save Gmail SMTP or a Resend API key in Settings before sending a test email.',
+      });
+    }
 
     const fromAddress = config.fromName
       ? `"${config.fromName}" <${config.fromEmail || config.smtpUser}>`
@@ -118,8 +124,9 @@ router.post('/test', async (req, res) => {
       return res.json({ message: `Test email sent to ${testEmail} via Resend!`, id: data?.id });
     }
 
-    // 3. Simulation mode
-    return res.json({ message: `Simulation mode active: fake email sent to ${testEmail} (no real SMTP was called).` });
+    return res.status(400).json({
+      error: 'Unsupported email provider. Choose Gmail SMTP or Resend in Settings.',
+    });
   } catch (error) {
     console.error('Test email error:', error);
     let errorMessage = error.message || 'Internal server error sending test email.';

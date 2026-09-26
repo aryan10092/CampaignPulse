@@ -9,7 +9,7 @@ async function initializeDatabase() {
     const sql = fs.readFileSync(schemaPath, 'utf8');
 
     await pool.query(sql);
-    console.log('✅ Database schema applied successfully! Tables `campaigns` and `recipients` are ready.');
+    console.log('✅ Database schema applied successfully! Tables `users`, `user_email_settings`, `campaigns`, and `recipients` are ready.');
   } catch (error) {
     console.error('❌ Failed to initialize database schema:', error);
     process.exit(1);

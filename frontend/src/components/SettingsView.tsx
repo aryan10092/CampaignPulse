@@ -11,14 +11,13 @@ import {
   Eye, 
   EyeOff, 
   Info,
-  ShieldCheck,
   Save,
   ExternalLink
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface SettingsData {
-  provider: 'nodemailer' | 'resend' | 'simulation';
+  provider: 'nodemailer' | 'resend';
   fromEmail: string;
   fromName: string;
   smtpUser: string;
@@ -26,10 +25,11 @@ interface SettingsData {
   maskedSmtpPass: string;
   hasApiKey: boolean;
   maskedApiKey: string;
+  configured: boolean;
 }
 
 export const SettingsView: React.FC = () => {
-  const [provider, setProvider] = useState<'nodemailer' | 'resend' | 'simulation'>('nodemailer');
+  const [provider, setProvider] = useState<'nodemailer' | 'resend'>('nodemailer');
   
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
@@ -40,6 +40,7 @@ export const SettingsView: React.FC = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [hasExistingKey, setHasExistingKey] = useState(false);
   const [maskedKey, setMaskedKey] = useState('');
+  const [configured, setConfigured] = useState(false);
 
   const [fromEmail, setFromEmail] = useState('');
   const [fromName, setFromName] = useState('CampaignPulse');
@@ -57,13 +58,14 @@ export const SettingsView: React.FC = () => {
       const res = await apiFetch('/api/settings');
       if (res.ok) {
         const data: SettingsData = await res.json();
-        setProvider(data.provider || 'nodemailer');
+        setProvider(data.provider === 'resend' ? 'resend' : 'nodemailer');
         setSmtpUser(data.smtpUser || '');
         setHasExistingSmtpPass(data.hasSmtpPass);
         setFromEmail(data.fromEmail || data.smtpUser || '');
         setFromName(data.fromName || 'CampaignPulse');
         setHasExistingKey(data.hasApiKey);
         setMaskedKey(data.maskedApiKey || '');
+        setConfigured(Boolean(data.configured));
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -153,7 +155,7 @@ export const SettingsView: React.FC = () => {
       <div className="mb-6 pb-4 border-b border-zinc-900">
         <h2 className="text-lg font-semibold text-white tracking-tight">Settings</h2>
         <p className="text-xs text-zinc-400 mt-0.5">
-          Configure email delivery provider (Gmail SMTP, Resend API, or sandbox simulation).
+          Save Gmail SMTP or a Resend API key. Campaigns send only after delivery is configured.
         </p>
       </div>
 
@@ -177,7 +179,7 @@ export const SettingsView: React.FC = () => {
             {/* Provider Selector */}
             <div>
               <label className="block text-xs font-mono text-zinc-400 mb-2">DELIVERY_PROVIDER</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setProvider('nodemailer')}
@@ -202,19 +204,6 @@ export const SettingsView: React.FC = () => {
                 >
                   <Key className="w-3.5 h-3.5 text-zinc-300" />
                   <span>Resend API</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setProvider('simulation')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-lg border text-xs font-mono gap-1 transition ${
-                    provider === 'simulation'
-                      ? 'bg-zinc-900 border-zinc-700 text-white'
-                      : 'bg-black border-zinc-800 text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Simulation</span>
                 </button>
               </div>
             </div>
@@ -316,6 +305,20 @@ export const SettingsView: React.FC = () => {
               </div>
             )}
 
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-400 mb-1">
+                FROM_EMAIL
+              </label>
+              <input
+                type="email"
+                required
+                value={fromEmail}
+                onChange={(e) => setFromEmail(e.target.value)}
+                placeholder={provider === 'nodemailer' ? 'yourname@gmail.com' : 'hello@yourdomain.com'}
+                className="w-full px-3 py-2 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-xs transition font-mono"
+              />
+            </div>
+
             {/* From Name */}
             <div>
               <label className="block text-[11px] font-mono text-zinc-400 mb-1">
@@ -376,7 +379,7 @@ export const SettingsView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSendTestEmail}
-                disabled={isSendingTest || !testEmail}
+                disabled={isSendingTest || !testEmail || !configured}
                 className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white text-xs font-mono border border-zinc-800 transition"
               >
                 {isSendingTest ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}

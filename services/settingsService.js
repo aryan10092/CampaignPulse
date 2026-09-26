@@ -1,13 +1,41 @@
 const db = require('../config/db');
 const { encrypt, decrypt } = require('./cryptoService');
 
+const ALLOWED_PROVIDERS = ['nodemailer', 'resend'];
+
+function httpError(statusCode, message) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  return err;
+}
+
+function emptyConfig() {
+  return {
+    provider: '',
+    smtpUser: '',
+    smtpPass: '',
+    resendApiKey: '',
+    fromEmail: '',
+    fromName: 'CampaignPulse',
+  };
+}
+
+function isDeliveryConfigured(config) {
+  if (!config) return false;
+  if (config.provider === 'nodemailer') {
+    return Boolean(config.smtpUser && config.smtpPass);
+  }
+  if (config.provider === 'resend') {
+    return Boolean(config.resendApiKey && (config.fromEmail || config.smtpUser));
+  }
+  return false;
+}
+
 /**
  * Returns the decrypted email config for a specific user.
- * Falls back to global app_settings / env if no user row exists.
+ * Campaign sends use only that user's saved Nodemailer/Resend credentials.
  */
 async function getEmailConfig(userId = null) {
-  let settings = null;
-
   if (userId) {
     try {
       const res = await db.query(
@@ -16,7 +44,7 @@ async function getEmailConfig(userId = null) {
       );
       if (res.rows.length > 0) {
         const row = res.rows[0];
-        settings = {
+        return {
           provider: row.provider,
           smtpUser: row.smtp_user,
           smtpPass: decrypt(row.smtp_pass),
@@ -28,36 +56,46 @@ async function getEmailConfig(userId = null) {
     } catch (err) {
       console.warn(`Could not read user_email_settings for user ${userId}:`, err.message);
     }
+    return emptyConfig();
   }
 
-  // Fallback: global app_settings + env
-  if (!settings) {
-    let dbSettings = {};
-    try {
-      const res = await db.query('SELECT key, value FROM app_settings');
-      for (const row of res.rows) {
-        dbSettings[row.key] = row.value;
-      }
-    } catch (err) {
-      console.warn('Could not read app_settings from DB:', err.message);
+  // Legacy global lookup (no authenticated user)
+  let dbSettings = {};
+  try {
+    const res = await db.query('SELECT key, value FROM app_settings');
+    for (const row of res.rows) {
+      dbSettings[row.key] = row.value;
     }
-
-    const smtpUser = dbSettings.smtp_user || process.env.SMTP_USER || '';
-    const smtpPass = dbSettings.smtp_pass || process.env.SMTP_PASS || '';
-    const resendApiKey = dbSettings.resend_api_key || process.env.RESEND_API_KEY || '';
-
-    let defaultProvider = 'simulation';
-    if (smtpUser && smtpPass) defaultProvider = 'nodemailer';
-    else if (resendApiKey) defaultProvider = 'resend';
-
-    const provider = dbSettings.email_provider || process.env.EMAIL_PROVIDER || defaultProvider;
-    const fromEmail = dbSettings.from_email || process.env.EMAIL_FROM || smtpUser || 'onboarding@resend.dev';
-    const fromName = dbSettings.from_name || process.env.EMAIL_FROM_NAME || 'CampaignPulse';
-
-    settings = { provider, smtpUser, smtpPass, resendApiKey, fromEmail, fromName };
+  } catch (err) {
+    console.warn('Could not read app_settings from DB:', err.message);
   }
 
-  return settings;
+  const smtpUser = dbSettings.smtp_user || process.env.SMTP_USER || '';
+  const smtpPass = dbSettings.smtp_pass || process.env.SMTP_PASS || '';
+  const resendApiKey = dbSettings.resend_api_key || process.env.RESEND_API_KEY || '';
+
+  let provider = dbSettings.email_provider || process.env.EMAIL_PROVIDER || '';
+  if (!ALLOWED_PROVIDERS.includes(provider)) {
+    if (smtpUser && smtpPass) provider = 'nodemailer';
+    else if (resendApiKey) provider = 'resend';
+    else provider = '';
+  }
+
+  const fromEmail = dbSettings.from_email || process.env.EMAIL_FROM || smtpUser || '';
+  const fromName = dbSettings.from_name || process.env.EMAIL_FROM_NAME || 'CampaignPulse';
+
+  return { provider, smtpUser, smtpPass, resendApiKey, fromEmail, fromName };
+}
+
+async function assertUserCanSend(userId) {
+  const config = await getEmailConfig(userId);
+  if (!isDeliveryConfigured(config)) {
+    throw httpError(
+      400,
+      'Email delivery is not configured. Save Gmail SMTP or a Resend API key in Settings before launching a campaign.'
+    );
+  }
+  return config;
 }
 
 /**
@@ -73,7 +111,7 @@ async function getPublicSettings(userId = null) {
   const maskedSmtpPass = config.smtpPass ? '••••••••••••••••' : '';
 
   return {
-    provider: config.provider,
+    provider: ALLOWED_PROVIDERS.includes(config.provider) ? config.provider : 'nodemailer',
     fromEmail: config.fromEmail,
     fromName: config.fromName,
     smtpUser: config.smtpUser,
@@ -81,6 +119,7 @@ async function getPublicSettings(userId = null) {
     maskedSmtpPass,
     hasApiKey: Boolean(config.resendApiKey),
     maskedApiKey: maskedResendKey,
+    configured: isDeliveryConfigured(config),
   };
 }
 
@@ -88,10 +127,14 @@ async function getPublicSettings(userId = null) {
  * Upserts per-user email settings, encrypting secrets.
  */
 async function updateSettings({ provider, smtpUser, smtpPass, resendApiKey, fromEmail, fromName }, userId = null) {
+  const nextProvider = (provider || '').trim();
+  if (!ALLOWED_PROVIDERS.includes(nextProvider)) {
+    throw httpError(400, 'Provider must be Gmail SMTP (nodemailer) or Resend.');
+  }
+
   if (!userId) {
-    // Legacy global upsert for backward compatibility
     const updates = [];
-    if (provider) updates.push(['email_provider', provider.trim()]);
+    updates.push(['email_provider', nextProvider]);
     if (smtpUser !== undefined) updates.push(['smtp_user', smtpUser.trim()]);
     if (smtpPass && !smtpPass.includes('••••')) updates.push(['smtp_pass', smtpPass.trim().replace(/\s+/g, '')]);
     if (resendApiKey && !resendApiKey.includes('••••')) updates.push(['resend_api_key', resendApiKey.trim()]);
@@ -109,7 +152,6 @@ async function updateSettings({ provider, smtpUser, smtpPass, resendApiKey, from
     return getPublicSettings(null);
   }
 
-  // Fetch current user settings to preserve existing secrets if not updating
   let current = { smtp_pass: '', resend_api_key: '' };
   const existing = await db.query('SELECT smtp_pass, resend_api_key FROM user_email_settings WHERE user_id = $1', [userId]);
   if (existing.rows.length > 0) {
@@ -126,6 +168,28 @@ async function updateSettings({ provider, smtpUser, smtpPass, resendApiKey, from
       ? encrypt(resendApiKey.trim())
       : current.resend_api_key;
 
+  const nextSmtpUser = smtpUser?.trim() || '';
+  const nextFromEmail = fromEmail?.trim() || nextSmtpUser;
+  const nextFromName = fromName?.trim() || 'CampaignPulse';
+
+  if (nextProvider === 'nodemailer') {
+    if (!nextSmtpUser) {
+      throw httpError(400, 'Gmail address is required for SMTP delivery.');
+    }
+    if (!encryptedSmtpPass) {
+      throw httpError(400, 'Gmail App Password is required for SMTP delivery.');
+    }
+  }
+
+  if (nextProvider === 'resend') {
+    if (!encryptedResendKey) {
+      throw httpError(400, 'Resend API key is required.');
+    }
+    if (!nextFromEmail) {
+      throw httpError(400, 'A verified From email address is required for Resend.');
+    }
+  }
+
   await db.query(
     `INSERT INTO user_email_settings (user_id, provider, smtp_user, smtp_pass, resend_api_key, from_email, from_name, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
@@ -139,12 +203,12 @@ async function updateSettings({ provider, smtpUser, smtpPass, resendApiKey, from
        updated_at = CURRENT_TIMESTAMP`,
     [
       userId,
-      provider || 'simulation',
-      smtpUser?.trim() || '',
+      nextProvider,
+      nextSmtpUser,
       encryptedSmtpPass,
       encryptedResendKey,
-      fromEmail?.trim() || smtpUser?.trim() || '',
-      fromName?.trim() || 'CampaignPulse',
+      nextFromEmail,
+      nextFromName,
     ]
   );
 
@@ -155,4 +219,6 @@ module.exports = {
   getEmailConfig,
   getPublicSettings,
   updateSettings,
+  isDeliveryConfigured,
+  assertUserCanSend,
 };

@@ -6,7 +6,6 @@ const campaignRoutes = require('./routes/campaigns');
 const settingsRoutes = require('./routes/settings');
 const authRoutes = require('./routes/auth');
 const { initSocket } = require('./services/socketService');
-const emailQueue = require('./queue/emailQueue');
 require('./workers/emailWorker');
 
 const app = express();
@@ -40,22 +39,6 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/settings', settingsRoutes);
-
-app.post('/send-email', async (req, res) => {
-  const { email, subject, body } = req.body;
-
-  if (!email || !subject || !body) {
-    return res.status(400).json({ error: 'Email, subject, and body are required.' });
-  }
-
-  try {
-    const job = await emailQueue.add('sendEmail', { email, subject, body });
-    res.status(200).json({ message: '✅ Email job added to the queue.', jobId: job.id });
-  } catch (error) {
-    console.error('Error adding job to the queue:', error);
-    res.status(500).json({ error: '❌ Failed to add job to the queue.' });
-  }
-});
 
 server.listen(PORT, () => {
   console.log(`🚀 Bulk Email Campaign Backend running on http://localhost:${PORT}`);

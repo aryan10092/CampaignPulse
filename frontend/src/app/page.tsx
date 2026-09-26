@@ -72,7 +72,10 @@ export default function Home() {
 
       <main className="flex-1">
         {activeTab === 'create' && (
-          <CreateCampaignForm onCampaignCreated={handleCampaignCreated} />
+          <CreateCampaignForm
+            onCampaignCreated={handleCampaignCreated}
+            onOpenSettings={() => setActiveTab('settings')}
+          />
         )}
 
         {activeTab === 'dashboard' && activeCampaignId && (

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const campaignService = require('../services/campaignService');
 const { requireAuth } = require('../middleware/auth');
+const { assertUserCanSend } = require('../services/settingsService');
 
 const router = express.Router();
 
@@ -45,6 +46,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     if (!req.file) {
       return res.status(400).json({ error: 'Please upload a CSV file with customers.' });
+    }
+
+    try {
+      await assertUserCanSend(req.user.id);
+    } catch (configError) {
+      return res.status(configError.statusCode || 400).json({ error: configError.message });
     }
 
     const result = await campaignService.createAndEnqueueCampaign({

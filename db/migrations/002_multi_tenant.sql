@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS user_email_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider VARCHAR(50) DEFAULT 'simulation',
+    provider VARCHAR(50) DEFAULT 'nodemailer',
     smtp_user VARCHAR(255) DEFAULT '',
     smtp_pass TEXT DEFAULT '',          -- encrypted
     resend_api_key TEXT DEFAULT '',     -- encrypted

@@ -65,16 +65,6 @@ function emitCampaignProgressThrottled(campaignId) {
           percentage,
           status: camp.status,
         });
-
-        io.emit('campaign:updated', {
-          campaignId,
-          total,
-          sent,
-          processing: camp.processing_count,
-          failed,
-          percentage,
-          status: camp.status,
-        });
       }
     } catch (err) {
       console.error('Error emitting throttled campaign progress:', err);

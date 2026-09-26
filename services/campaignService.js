@@ -117,7 +117,7 @@ async function getCampaignStats(campaignId, userId = null) {
   let campaignRes;
   if (userId) {
     campaignRes = await db.query(
-      `SELECT * FROM campaigns WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)`,
+      `SELECT * FROM campaigns WHERE id = $1 AND user_id = $2`,
       [campaignId, userId]
     );
   } else {
@@ -155,7 +155,7 @@ async function listAllCampaigns(userId = null) {
     res = await db.query(
       `SELECT id, title, subject, total_count, sent_count, processing_count, failed_count, status, created_at
        FROM campaigns
-       WHERE user_id = $1 OR user_id IS NULL
+       WHERE user_id = $1
        ORDER BY created_at DESC
        LIMIT 20`,
       [userId]

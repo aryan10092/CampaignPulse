@@ -54,8 +54,11 @@ async function sendCampaignEmail({ email, name, subject, body, userId }) {
     ? `"${config.fromName}" <${config.fromEmail || config.smtpUser}>`
     : (config.fromEmail || config.smtpUser);
 
-  // 1. Nodemailer (Gmail SMTP)
-  if (config.provider === 'nodemailer' && config.smtpUser && config.smtpPass) {
+  if (config.provider === 'nodemailer') {
+    if (!config.smtpUser || !config.smtpPass) {
+      throw new Error('Gmail SMTP is not configured for this account. Save credentials in Settings.');
+    }
+
     const transporter = getOrCreateTransporter(userId, config.smtpUser, config.smtpPass);
 
     const info = await transporter.sendMail({
@@ -70,8 +73,11 @@ async function sendCampaignEmail({ email, name, subject, body, userId }) {
     return { success: true, messageId: info.messageId, mode: 'nodemailer' };
   }
 
-  // 2. Resend Delivery
-  if (config.provider === 'resend' && config.resendApiKey) {
+  if (config.provider === 'resend') {
+    if (!config.resendApiKey) {
+      throw new Error('Resend API key is not configured for this account. Save credentials in Settings.');
+    }
+
     const resend = new Resend(config.resendApiKey);
 
     const { data, error } = await resend.emails.send({
@@ -90,16 +96,7 @@ async function sendCampaignEmail({ email, name, subject, body, userId }) {
     return { success: true, id: data?.id, mode: 'resend' };
   }
 
-  // 3. Simulation Sandbox
-  const latency = Math.floor(Math.random() * 200) + 100;
-  await new Promise((resolve) => setTimeout(resolve, latency));
-
-  if (Math.random() < 0.03) {
-    throw new Error(`Simulated SMTP Error: 550 Mailbox unavailable <${email}>`);
-  }
-
-  console.log(`📨 [Simulation] Simulated sending email to ${email}`);
-  return { success: true, mode: 'simulation' };
+  throw new Error('Email delivery is not configured. Save Gmail SMTP or a Resend API key in Settings.');
 }
 
 // Create worker with concurrency and rate limiting

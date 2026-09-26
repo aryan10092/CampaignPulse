@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { UploadCloud, Send, Sparkles, FileText } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { UploadCloud, Send, Sparkles, FileText, AlertCircle, Settings } from 'lucide-react';
 import { API_URL } from '../lib/config';
+import { apiFetch } from '../lib/api';
 
 interface CreateCampaignFormProps {
   onCampaignCreated: (campaignId: string) => void;
+  onOpenSettings: () => void;
 }
 
 export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
   onCampaignCreated,
+  onOpenSettings,
 }) => {
   const [title, setTitle] = useState('Diwali Special Offer 2026');
   const [subject, setSubject] = useState('Exclusive Diwali Festive Offer for You');
@@ -20,7 +23,28 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [deliveryReady, setDeliveryReady] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/settings');
+        if (!res.ok) {
+          if (!cancelled) setDeliveryReady(false);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled) setDeliveryReady(Boolean(data.configured));
+      } catch {
+        if (!cancelled) setDeliveryReady(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -84,6 +108,10 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
       setError('Please select or upload a customers CSV file.');
       return;
     }
+    if (deliveryReady === false) {
+      setError('Save Gmail SMTP or a Resend API key in Settings before launching a campaign.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -125,7 +153,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               Create Campaign
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Upload customer CSV and dispatch background jobs via BullMQ & Redis.
+              Upload a customer CSV. Mail is sent with your saved Gmail SMTP or Resend credentials.
             </p>
           </div>
           <button
@@ -137,6 +165,23 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
              Sample CSV
           </button>
         </div>
+
+        {deliveryReady === false && (
+          <div className="mb-5 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-mono flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p>Delivery is not configured. Save Gmail SMTP or a Resend API key before launching.</p>
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="mt-2 inline-flex items-center gap-1.5 text-white hover:text-zinc-200"
+              >
+                <Settings className="w-3 h-3" />
+                Open Settings
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mb-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono">
@@ -256,9 +301,9 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || !file}
+              disabled={isSubmitting || !file || deliveryReady === false}
               className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-medium text-xs tracking-wide transition ${
-                isSubmitting || !file
+                isSubmitting || !file || deliveryReady === false
                   ? 'bg-zinc-900 text-zinc-600 border border-zinc-800 cursor-not-allowed'
                   : 'bg-white text-black hover:bg-zinc-200 shadow-sm'
               }`}
