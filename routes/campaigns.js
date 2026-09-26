@@ -3,8 +3,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const campaignService = require('../services/campaignService');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
+
+// All campaign routes require authentication
+router.use(requireAuth);
 
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -48,6 +52,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       subject,
       body,
       filePath: req.file.path,
+      userId: req.user.id,
     });
 
     res.status(201).json({
@@ -62,7 +67,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const data = await campaignService.getCampaignStats(req.params.id);
+    const data = await campaignService.getCampaignStats(req.params.id, req.user.id);
     if (!data) {
       return res.status(404).json({ error: 'Campaign not found' });
     }
@@ -75,7 +80,7 @@ router.get('/:id', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const campaigns = await campaignService.listAllCampaigns();
+    const campaigns = await campaignService.listAllCampaigns(req.user.id);
     res.json({ campaigns });
   } catch (error) {
     console.error('Error listing campaigns:', error);

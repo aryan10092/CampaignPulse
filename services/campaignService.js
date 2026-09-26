@@ -5,12 +5,12 @@ const emailQueue = require('../queue/emailQueue');
 
 const BATCH_SIZE = 500;
 
-async function createAndEnqueueCampaign({ title, subject, body, filePath }) {
+async function createAndEnqueueCampaign({ title, subject, body, filePath, userId }) {
   const campaignRes = await db.query(
-    `INSERT INTO campaigns (title, subject, body, status)
-     VALUES ($1, $2, $3, 'PROCESSING')
+    `INSERT INTO campaigns (title, subject, body, status, user_id)
+     VALUES ($1, $2, $3, 'PROCESSING', $4)
      RETURNING *`,
-    [title, subject, body]
+    [title, subject, body, userId || null]
   );
   const campaign = campaignRes.rows[0];
   const campaignId = campaign.id;
@@ -40,6 +40,7 @@ async function createAndEnqueueCampaign({ title, subject, body, filePath }) {
         name: row.name,
         subject: campaign.subject,
         body: campaign.body,
+        userId: userId || null,   // <-- pass userId to worker
       },
     }));
 
@@ -112,15 +113,18 @@ async function createAndEnqueueCampaign({ title, subject, body, filePath }) {
   };
 }
 
-async function getCampaignStats(campaignId) {
-  const campaignRes = await db.query(
-    `SELECT * FROM campaigns WHERE id = $1`,
-    [campaignId]
-  );
-
-  if (campaignRes.rows.length === 0) {
-    return null;
+async function getCampaignStats(campaignId, userId = null) {
+  let campaignRes;
+  if (userId) {
+    campaignRes = await db.query(
+      `SELECT * FROM campaigns WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)`,
+      [campaignId, userId]
+    );
+  } else {
+    campaignRes = await db.query(`SELECT * FROM campaigns WHERE id = $1`, [campaignId]);
   }
+
+  if (campaignRes.rows.length === 0) return null;
 
   const campaign = campaignRes.rows[0];
 
@@ -140,21 +144,30 @@ async function getCampaignStats(campaignId) {
   const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
 
   return {
-    campaign: {
-      ...campaign,
-      percentage,
-    },
+    campaign: { ...campaign, percentage },
     recentRecipients: recipientsRes.rows,
   };
 }
 
-async function listAllCampaigns() {
-  const res = await db.query(
-    `SELECT id, title, subject, total_count, sent_count, processing_count, failed_count, status, created_at
-     FROM campaigns
-     ORDER BY created_at DESC
-     LIMIT 20`
-  );
+async function listAllCampaigns(userId = null) {
+  let res;
+  if (userId) {
+    res = await db.query(
+      `SELECT id, title, subject, total_count, sent_count, processing_count, failed_count, status, created_at
+       FROM campaigns
+       WHERE user_id = $1 OR user_id IS NULL
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [userId]
+    );
+  } else {
+    res = await db.query(
+      `SELECT id, title, subject, total_count, sent_count, processing_count, failed_count, status, created_at
+       FROM campaigns
+       ORDER BY created_at DESC
+       LIMIT 20`
+    );
+  }
 
   return res.rows.map((camp) => {
     const total = camp.total_count || 0;
@@ -162,11 +175,7 @@ async function listAllCampaigns() {
     const failed = camp.failed_count || 0;
     const processed = sent + failed;
     const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
-
-    return {
-      ...camp,
-      percentage,
-    };
+    return { ...camp, percentage };
   });
 }
 

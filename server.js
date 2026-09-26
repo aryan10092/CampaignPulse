@@ -4,6 +4,7 @@ const http = require('http');
 const cors = require('cors');
 const campaignRoutes = require('./routes/campaigns');
 const settingsRoutes = require('./routes/settings');
+const authRoutes = require('./routes/auth');
 const { initSocket } = require('./services/socketService');
 const emailQueue = require('./queue/emailQueue');
 require('./workers/emailWorker');
@@ -36,6 +37,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/settings', settingsRoutes);
 

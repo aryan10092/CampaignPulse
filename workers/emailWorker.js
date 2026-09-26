@@ -6,33 +6,34 @@ const db = require('../config/db');
 const { emitCampaignProgressThrottled, emitRecipientUpdate } = require('../services/socketService');
 const { getEmailConfig } = require('../services/settingsService');
 
-// Cached Nodemailer transporter pool
-let cachedTransporter = null;
-let lastTransporterKey = '';
+// Per-user Nodemailer transporter pool cache
+// Key: `userId:smtpUser:smtpPass` → transporter instance
+const transporterCache = new Map();
 
-function getOrCreateTransporter(user, pass) {
-  const key = `${user}:${pass}`;
-  if (cachedTransporter && lastTransporterKey === key) {
-    return cachedTransporter;
+function getOrCreateTransporter(userId, user, pass) {
+  const key = `${userId || 'global'}:${user}:${pass}`;
+  if (transporterCache.has(key)) {
+    return transporterCache.get(key);
   }
 
-  cachedTransporter = nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     service: 'gmail',
-    pool: true, // Reuse persistent SMTP socket connections across batch jobs
+    pool: true,
     maxConnections: 5,
     maxMessages: 100,
     auth: { user, pass },
   });
 
-  lastTransporterKey = key;
-  return cachedTransporter;
+  transporterCache.set(key, transporter);
+  return transporter;
 }
 
 /**
- * Dispatches an email using Nodemailer (Gmail), Resend, or simulation fallback
+ * Dispatches an email using the config for the given userId.
+ * Falls back to global config if userId is null.
  */
-async function sendCampaignEmail({ email, name, subject, body }) {
-  const config = await getEmailConfig();
+async function sendCampaignEmail({ email, name, subject, body, userId }) {
+  const config = await getEmailConfig(userId || null);
 
   const recipientName = name || 'Customer';
   const personalizedText = body.replace(/{name}/gi, recipientName);
@@ -55,7 +56,7 @@ async function sendCampaignEmail({ email, name, subject, body }) {
 
   // 1. Nodemailer (Gmail SMTP)
   if (config.provider === 'nodemailer' && config.smtpUser && config.smtpPass) {
-    const transporter = getOrCreateTransporter(config.smtpUser, config.smtpPass);
+    const transporter = getOrCreateTransporter(userId, config.smtpUser, config.smtpPass);
 
     const info = await transporter.sendMail({
       from: fromAddress,
@@ -65,7 +66,7 @@ async function sendCampaignEmail({ email, name, subject, body }) {
       html: personalizedHtml,
     });
 
-    console.log(`📨 [Nodemailer] Successfully sent email to ${email} (MessageID: ${info.messageId})`);
+    console.log(`📨 [Nodemailer] Sent to ${email} (User: ${userId || 'global'}, MsgID: ${info.messageId})`);
     return { success: true, messageId: info.messageId, mode: 'nodemailer' };
   }
 
@@ -85,11 +86,11 @@ async function sendCampaignEmail({ email, name, subject, body }) {
       throw new Error(`Resend Error: ${error.message || JSON.stringify(error)}`);
     }
 
-    console.log(`📨 [Resend] Successfully sent email to ${email} (ID: ${data?.id})`);
+    console.log(`📨 [Resend] Sent to ${email} (User: ${userId || 'global'}, ID: ${data?.id})`);
     return { success: true, id: data?.id, mode: 'resend' };
   }
 
-  // 3. Simulation Sandbox (if neither is configured or provider is set to simulation)
+  // 3. Simulation Sandbox
   const latency = Math.floor(Math.random() * 200) + 100;
   await new Promise((resolve) => setTimeout(resolve, latency));
 
@@ -105,11 +106,11 @@ async function sendCampaignEmail({ email, name, subject, body }) {
 const emailWorker = new Worker(
   'emailQueue',
   async (job) => {
-    const { campaignId, recipientId, email, name, subject, body } = job.data;
+    const { campaignId, recipientId, email, name, subject, body, userId } = job.data;
 
     try {
-      // 1. Process email dispatch
-      await sendCampaignEmail({ email, name, subject, body });
+      // 1. Process email dispatch (per-user config)
+      await sendCampaignEmail({ email, name, subject, body, userId });
 
       // 2. Mark recipient as SENT in NeonDB
       await db.query(
@@ -150,13 +151,13 @@ const emailWorker = new Worker(
     connection,
     concurrency: parseInt(process.env.WORKER_CONCURRENCY || '5', 10),
     limiter: {
-      max: parseInt(process.env.WORKER_RATE_LIMIT || '5', 10), // Safe rate limit for Gmail & Resend
+      max: parseInt(process.env.WORKER_RATE_LIMIT || '5', 10),
       duration: 1000,
     },
   }
 );
 
-// Worker Event: When a job exhausts all retries and permanently fails
+// Worker Event: permanently failed jobs
 emailWorker.on('failed', async (job, err) => {
   if (!job) return;
 
@@ -166,7 +167,6 @@ emailWorker.on('failed', async (job, err) => {
     console.error(`❌ Job permanently failed for ${email} (Campaign: ${campaignId}) after ${job.attemptsMade} attempts: ${err.message}`);
 
     try {
-      // 1. Mark recipient as FAILED in NeonDB
       await db.query(
         `UPDATE recipients
          SET status = 'FAILED', error_reason = $1, job_id = $2
@@ -174,7 +174,6 @@ emailWorker.on('failed', async (job, err) => {
         [err.message, job.id, recipientId]
       );
 
-      // 2. Atomically increment campaign failed count
       await db.query(
         `UPDATE campaigns
          SET failed_count = failed_count + 1,
@@ -185,7 +184,6 @@ emailWorker.on('failed', async (job, err) => {
         [campaignId]
       );
 
-      // 3. Push real-time failed notification via WebSockets
       emitRecipientUpdate(campaignId, {
         recipientId,
         email,
