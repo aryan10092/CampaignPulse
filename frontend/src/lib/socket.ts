@@ -16,7 +16,7 @@ export const getSocket = (token?: string | null): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
       auth: { token: authToken },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
       autoConnect: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
