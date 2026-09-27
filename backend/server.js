@@ -21,7 +21,6 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.json({
     message: 'CampaignPulse Bulk Email Campaign Backend API is running.',
-    frontend: 'http://localhost:3000',
     endpoints: {
       health: '/health',
       campaigns: '/api/campaigns',
