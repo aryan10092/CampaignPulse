@@ -263,7 +263,7 @@ export const CampaignDashboard: React.FC<CampaignDashboardProps> = ({
           </span>
         </div>
 
-        <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-[360px] overflow-y-auto custom-scrollbar">
           {recipients.length === 0 ? (
             <div className="p-8 text-center text-zinc-600 text-xs font-mono">
               WAITING_FOR_WORKER_EVENTS...
