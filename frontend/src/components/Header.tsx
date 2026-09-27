@@ -34,9 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-sm font-semibold text-white tracking-tight">
               CampaignPulse
             </span>
-            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
-              v2.0
-            </span>
+           
           </div>
         </div>
 

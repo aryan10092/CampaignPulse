@@ -4,7 +4,7 @@ require('dotenv').config();
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.error('❌ Error: DATABASE_URL is not set in environment variables.');
+  console.error(' Error: DATABASE_URL is not set in environment variables.');
 }
 
 const pool = new Pool({

@@ -186,7 +186,7 @@ emailWorker.on('failed', async (job, err) => {
   const { campaignId, recipientId, email, name } = job.data;
 
   if (job.attemptsMade >= (job.opts.attempts || 3)) {
-    console.error(`❌ Job permanently failed for ${email} (Campaign: ${campaignId}) after ${job.attemptsMade} attempts: ${err.message}`);
+    console.error(`Job permanently failed for ${email} (Campaign: ${campaignId}) after ${job.attemptsMade} attempts: ${err.message}`);
 
     try {
       await db.query(

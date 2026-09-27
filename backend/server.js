@@ -21,16 +21,14 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.json({
     message: 'CampaignPulse Bulk Email Campaign Backend API is running.',
-    frontend: 'http://localhost:3001',
+    frontend: 'http://localhost:3000',
     endpoints: {
       health: '/health',
       campaigns: '/api/campaigns',
       settings: '/api/settings',
     },
-  });
-});
-
-app.get('/favicon.ico', (req, res) => res.status(204).end());
+  })
+})
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -41,6 +39,6 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/settings', settingsRoutes);
 
 server.listen(PORT, () => {
-  console.log(`🚀 Bulk Email Campaign Backend running on http://localhost:${PORT}`);
-  console.log(`📡 WebSocket server listening on port ${PORT}`);
+  console.log(`Bulk Email Campaign Backend running on http://localhost:${PORT}`);
+  console.log(` WebSocket server listening on port ${PORT}`);
 });

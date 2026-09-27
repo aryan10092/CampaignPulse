@@ -5,7 +5,7 @@ const KEY = Buffer.from(process.env.ENCRYPTION_KEY || '', 'hex');
 
 /**
  * Encrypts plaintext using AES-256-GCM.
- * Returns a colon-separated string: iv:authTag:ciphertext (all hex)
+ * Returns a colon-separated string
  */
 function encrypt(text) {
   if (!text) return '';

@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS campaigns (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Existing DBs created before user_id existed
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS recipients (

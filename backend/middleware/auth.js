@@ -10,10 +10,7 @@ function verifyToken(token) {
   return { id: payload.sub, email: payload.email };
 }
 
-/**
- * Express middleware that validates the JWT Bearer token.
- * Attaches req.user = { id, email } on success.
- */
+
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
