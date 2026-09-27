@@ -222,7 +222,7 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
 
           {/* Email Body */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 ">
               <label className="block text-xs font-mono text-zinc-400">
                 BODY_TEMPLATE
               </label>
@@ -240,7 +240,8 @@ export const CreateCampaignForm: React.FC<CreateCampaignFormProps> = ({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your email body here..."
-              className="w-full px-3.5 py-2.5 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-xs font-mono transition leading-relaxed"
+              className="w-full px-3.5 py-2.5 rounded-lg bg-black border border-zinc-800 custom-scrollbar text-white placeholder-zinc-600 focus:outline-none 
+              focus:border-zinc-500 text-xs font-mono transition leading-relaxed"
             />
           </div>
 
